@@ -95,10 +95,10 @@ struct st25r3916StreamConfig {
 #define ST25R3916_CMD_RESPONSE_RF_COLLISION_N  0xC9U    /*!< NFC transmit with Response RF Collision Avoidance       */
 #define ST25R3916_CMD_GOTO_SENSE               0xCDU    /*!< Passive target logic to Sense/Idle state                */
 #define ST25R3916_CMD_GOTO_SLEEP               0xCEU    /*!< Passive target logic to Sleep/Halt state                */
-#define ST25R3916_CMD_MASK_RECEIVE_DATA        0xD0U    /*!< Mask recive data                                        */
-#define ST25R3916_CMD_UNMASK_RECEIVE_DATA      0xD1U    /*!< Unmask recive data                                      */
+#define ST25R3916_CMD_MASK_RECEIVE_DATA        0xD0U    /*!< Mask receive data                                        */
+#define ST25R3916_CMD_UNMASK_RECEIVE_DATA      0xD1U    /*!< Unmask receive data                                      */
 #define ST25R3916_CMD_AM_MOD_STATE_CHANGE      0xD2U    /*!< AM Modulation state change                              */
-#define ST25R3916_CMD_MEASURE_AMPLITUDE        0xD3U    /*!< Measure singal amplitude on RFI inputs                  */
+#define ST25R3916_CMD_MEASURE_AMPLITUDE        0xD3U    /*!< Measure signal amplitude on RFI inputs                  */
 #define ST25R3916_CMD_RESET_RXGAIN             0xD5U    /*!< Reset RX Gain                                           */
 #define ST25R3916_CMD_ADJUST_REGULATORS        0xD6U    /*!< Adjust regulators                                       */
 #define ST25R3916_CMD_CALIBRATE_DRIVER_TIMING  0xD8U    /*!< Starts the sequence to adjust the driver timing         */
