@@ -870,7 +870,7 @@ ReturnCode RfalRfST25R3916Class::rfalStartTransceive(const rfalTransceiveContext
       /* Clear FIFO, Clear and Enable the Interrupts */
       rfalPrepareTransceive();
 
-      /* Disable our field upon a Rx reEnable on AP2P */
+      /* Disable our field upon a Rx re-enable on AP2P */
       if (rfalIsModeActiveComm(gRFAL.mode)) {
         st25r3916TxOff();
       }
@@ -1215,7 +1215,7 @@ void RfalRfST25R3916Class::rfalTransceiveTx(void)
   uint16_t          tmp;
   ReturnCode        ret;
 
-  /* Supress warning in case NFC-V feature is disabled */
+  /* Suppress warning in case NFC-V feature is disabled */
   ret = ERR_NONE;
   NO_WARNING(ret);
 
@@ -1560,7 +1560,7 @@ void RfalRfST25R3916Class::rfalTransceiveRx(void)
       }
 
       if ((irqs & ST25R3916_IRQ_MASK_RX_REST) != 0U) {
-        /* RX_REST indicates that Receiver has been reseted due to EMD, therefore a RXS + RXE should *
+        /* RX_REST indicates that Receiver has been reset due to EMD, therefore a RXS + RXE should *
          * follow if a good reception is followed within the valid initial timeout                   */
 
         /* Check whether NRT has expired already, if so signal a timeout */
@@ -2041,7 +2041,7 @@ ReturnCode RfalRfST25R3916Class::rfalISO14443ATransceiveShortFrame(rfal14443ASho
   /* Disable Collision interrupt */
   st25r3916DisableInterrupts((ST25R3916_IRQ_MASK_COL));
 
-  /* ReEnable CRC on Rx */
+  /* Re-enable CRC on Rx */
   st25r3916ClrRegisterBits(ST25R3916_REG_AUX, ST25R3916_REG_AUX_no_crc_rx);
 
   return ret;
@@ -2066,7 +2066,7 @@ ReturnCode RfalRfST25R3916Class::rfalISO14443ATransceiveAnticollisionFrame(uint8
   }
 
   /*******************************************************************************/
-  /* Set speficic Analog Config for Anticolission if needed */
+  /* Set specific Analog Config for Anticolission if needed */
   rfalSetAnalogConfig((RFAL_ANALOG_CONFIG_POLL | RFAL_ANALOG_CONFIG_TECH_NFCA | RFAL_ANALOG_CONFIG_BITRATE_COMMON | RFAL_ANALOG_CONFIG_ANTICOL));
 
 
@@ -2141,7 +2141,7 @@ ReturnCode RfalRfST25R3916Class::rfalISO14443ATransceiveAnticollisionFrame(uint8
   /* Disable anti collision again */
   st25r3916ClrRegisterBits(ST25R3916_REG_ISO14443A_NFC, ST25R3916_REG_ISO14443A_NFC_antcl);
 
-  /* ReEnable CRC on Rx */
+  /* Re-enable CRC on Rx */
   st25r3916ClrRegisterBits(ST25R3916_REG_AUX, ST25R3916_REG_AUX_no_crc_rx);
   /*******************************************************************************/
 
@@ -2165,7 +2165,7 @@ ReturnCode RfalRfST25R3916Class::rfalISO15693TransceiveAnticollisionFrame(uint8_
   }
 
   /*******************************************************************************/
-  /* Set speficic Analog Config for Anticolission if needed */
+  /* Set specific Analog Config for Anticolission if needed */
   rfalSetAnalogConfig((RFAL_ANALOG_CONFIG_POLL | RFAL_ANALOG_CONFIG_TECH_NFCV | RFAL_ANALOG_CONFIG_BITRATE_COMMON | RFAL_ANALOG_CONFIG_ANTICOL));
 
 
@@ -2298,7 +2298,7 @@ ReturnCode RfalRfST25R3916Class::rfalFeliCaPoll(rfalFeliCaPollSlots slots, uint1
         /* Upon timeout the full Poll Delay + (Slot time)*(nbSlots) has expired */
         timeout = true;
       } else {
-        /* Reception done, reEnabled Rx for following Slot */
+        /* Reception done, re-enabled Rx for following Slot */
         st25r3916ExecuteCommand(ST25R3916_CMD_UNMASK_RECEIVE_DATA);
         st25r3916ExecuteCommand(ST25R3916_CMD_RESET_RXGAIN);
 
@@ -2450,7 +2450,7 @@ ReturnCode RfalRfST25R3916Class::rfalWakeUpModeStart(const rfalWakeUpConfig *con
 
   /*******************************************************************************/
   /* Check if AAT is enabled. If so disable en bit to give time for the Voltage  *
-   * on the to varicaps to settle and have a stable reference measurment         */
+   * on the to varicaps to settle and have a stable reference measurement        */
   if (st25r3916CheckReg(ST25R3916_REG_IO_CONF2, ST25R3916_REG_IO_CONF2_aat_en, ST25R3916_REG_IO_CONF2_aat_en) && !gRFAL.wum.cfg.swTagDetect) {
     st25r3916ClrRegisterBits(ST25R3916_REG_OP_CONTROL, ST25R3916_REG_OP_CONTROL_en);
     delay(RFAL_ST25R3916_AAT_SETTLE_OFF);

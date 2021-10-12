@@ -131,7 +131,7 @@ void RfalRfST25R3916Class::st25r3916Deinitialize(void)
 {
   st25r3916DisableInterrupts(ST25R3916_IRQ_MASK_ALL);
 
-  /* Disabe Tx and Rx, Keep OSC On */
+  /* Disable Tx and Rx, Keep OSC On */
   st25r3916TxRxOff();
 
   return;
@@ -253,7 +253,7 @@ ReturnCode RfalRfST25R3916Class::st25r3916CalibrateCapacitiveSensor(uint8_t *res
   /* Execute automatic calibration */
   ret = st25r3916ExecuteCommandAndGetResult(ST25R3916_CMD_CALIBRATE_C_SENSOR, ST25R3916_REG_CAP_SENSOR_RESULT, ST25R3916_TOUT_CALIBRATE_CAP_SENSOR, &res);
 
-  /* Check wether the calibration was successull */
+  /* Check whether the calibration was successull */
   if (((res & ST25R3916_REG_CAP_SENSOR_RESULT_cs_cal_end) != ST25R3916_REG_CAP_SENSOR_RESULT_cs_cal_end) ||
       ((res & ST25R3916_REG_CAP_SENSOR_RESULT_cs_cal_err) == ST25R3916_REG_CAP_SENSOR_RESULT_cs_cal_err) || (ret != ERR_NONE)) {
     return ERR_IO;
