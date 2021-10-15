@@ -1923,7 +1923,6 @@ class RfalRfST25R3916Class : public RfalRfClass {
      */
     ReturnCode st25r3916AatTune(const struct st25r3916AatTuneParams *tuningParams, struct st25r3916AatTuneResult *tuningStatus);
 
-
   protected:
 
     void rfalTransceiveTx(void);
@@ -1950,6 +1949,8 @@ class RfalRfST25R3916Class : public RfalRfClass {
     ReturnCode aatMeasure(uint8_t serCap, uint8_t parCap, uint8_t *amplitude, uint8_t *phase, uint16_t *measureCnt);
     uint32_t aatCalcF(const struct st25r3916AatTuneParams *tuningParams, uint8_t amplitude, uint8_t phase);
     ReturnCode aatStepDacVals(const struct st25r3916AatTuneParams *tuningParams, uint8_t *a, uint8_t *b, int32_t dir);
+    void setISRPending(void);
+    bool isBusBusy(void);
 
     TwoWire *dev_i2c;
     SPIClass *dev_spi;
@@ -1964,6 +1965,8 @@ class RfalRfST25R3916Class : public RfalRfClass {
     volatile st25r3916Interrupt st25r3916interrupt; /*!< Instance of ST25R3916 interrupt */
     uint32_t timerStopwatchTick;
     bool i2c_enabled;
+    volatile bool isr_pending;
+    volatile bool bus_busy;
 };
 
 #ifdef __cplusplus
