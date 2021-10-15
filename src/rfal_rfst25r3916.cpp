@@ -50,6 +50,7 @@ RfalRfST25R3916Class::RfalRfST25R3916Class(SPIClass *spi, int cs_pin, int int_pi
   dev_i2c = NULL;
   isr_pending = false;
   bus_busy = false;
+  irq_handler = NULL;
 }
 
 RfalRfST25R3916Class::RfalRfST25R3916Class(TwoWire *i2c, int int_pin) : dev_i2c(i2c), int_pin(int_pin)
@@ -64,6 +65,7 @@ RfalRfST25R3916Class::RfalRfST25R3916Class(TwoWire *i2c, int int_pin) : dev_i2c(
   dev_spi = NULL;
   isr_pending = false;
   bus_busy = false;
+  irq_handler = NULL;
 }
 
 
@@ -73,6 +75,11 @@ ReturnCode RfalRfST25R3916Class::rfalInitialize(void)
 
   pinMode(cs_pin, OUTPUT);
   digitalWrite(cs_pin, HIGH);
+
+  pinMode(int_pin, INPUT);
+  Callback<void()>::func = std::bind(&RfalRfST25R3916Class::st25r3916Isr, this);
+  irq_handler = static_cast<ST25R3916IrqHandler>(Callback<void()>::callback);
+  attachInterrupt(int_pin, irq_handler, RISING);
 
   rfalAnalogConfigInitialize();              /* Initialize RFAL's Analog Configs */
 
@@ -196,6 +203,10 @@ ReturnCode RfalRfST25R3916Class::rfalDeinitialize(void)
   rfalSetAnalogConfig((RFAL_ANALOG_CONFIG_TECH_CHIP | RFAL_ANALOG_CONFIG_CHIP_DEINIT));
 
   gRFAL.state = RFAL_STATE_IDLE;
+
+  detachInterrupt(int_pin);
+  irq_handler = NULL;
+
   return ERR_NONE;
 }
 

@@ -48,6 +48,7 @@
 #include "rfal_rfst25r3916_analogConfig.h"
 #include "rfal_rfst25r3916_iso15693_2.h"
 #include "st25r3916_aat.h"
+#include <functional>
 
 /*
  ******************************************************************************
@@ -209,6 +210,23 @@ typedef struct {
   uint16_t configTblSize;          /*!< Total size of Analog Configuration                      */
   bool    ready;                  /*!< Indicate if Look Up Table is complete and ready for use */
 } rfalAnalogConfigMgmt;
+
+template <typename T>
+struct Callback;
+
+template <typename Ret, typename... Params>
+struct Callback<Ret(Params...)> {
+   template <typename... Args>
+   static Ret callback(Args... args) {
+      return func(args...);
+   }
+   static std::function<Ret(Params...)> func;
+};
+
+template <typename Ret, typename... Params>
+std::function<Ret(Params...)> Callback<Ret(Params...)>::func;
+
+typedef void (*ST25R3916IrqHandler)(void);
 
 /*
 ******************************************************************************
@@ -1749,15 +1767,6 @@ class RfalRfST25R3916Class : public RfalRfClass {
 
     /*!
      *****************************************************************************
-     *  \brief  ISR Service routine
-     *
-     *  This function modiefies the interrupt
-     *****************************************************************************
-     */
-    void  st25r3916Isr(void);
-
-    /*!
-     *****************************************************************************
      *  \brief  Enable a given ST25R3916 Interrupt source
      *
      *  This function enables all interrupts given by \a mask,
@@ -1951,6 +1960,14 @@ class RfalRfST25R3916Class : public RfalRfClass {
     ReturnCode aatStepDacVals(const struct st25r3916AatTuneParams *tuningParams, uint8_t *a, uint8_t *b, int32_t dir);
     void setISRPending(void);
     bool isBusBusy(void);
+    /*!
+     *****************************************************************************
+     *  \brief  ISR Service routine
+     *
+     *  This function modifies the interrupt
+     *****************************************************************************
+     */
+    void  st25r3916Isr(void);
 
     TwoWire *dev_i2c;
     SPIClass *dev_spi;
@@ -1967,6 +1984,7 @@ class RfalRfST25R3916Class : public RfalRfClass {
     bool i2c_enabled;
     volatile bool isr_pending;
     volatile bool bus_busy;
+    ST25R3916IrqHandler irq_handler;
 };
 
 #ifdef __cplusplus
