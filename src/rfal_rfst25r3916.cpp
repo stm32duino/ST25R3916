@@ -48,6 +48,8 @@ RfalRfST25R3916Class::RfalRfST25R3916Class(SPIClass *spi, int cs_pin, int int_pi
   timerStopwatchTick = 0;
   i2c_enabled = false;
   dev_i2c = NULL;
+  isr_pending = false;
+  bus_busy = false;
 }
 
 RfalRfST25R3916Class::RfalRfST25R3916Class(TwoWire *i2c, int int_pin) : dev_i2c(i2c), int_pin(int_pin)
@@ -60,6 +62,8 @@ RfalRfST25R3916Class::RfalRfST25R3916Class(TwoWire *i2c, int int_pin) : dev_i2c(
   timerStopwatchTick = 0;
   i2c_enabled = true;
   dev_spi = NULL;
+  isr_pending = false;
+  bus_busy = false;
 }
 
 
@@ -2845,6 +2849,15 @@ ReturnCode RfalRfST25R3916Class::rfalChipMeasurePowerSupply(uint8_t param, uint8
   return ERR_NONE;
 }
 
+void RfalRfST25R3916Class::setISRPending(void)
+{
+  isr_pending = true;
+}
+
+bool RfalRfST25R3916Class::isBusBusy(void)
+{
+  return bus_busy;
+}
 
 
 /*******************************************************************************/
