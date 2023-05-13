@@ -483,19 +483,12 @@ bool RfalRfST25R3916Class::st25r3916CheckChipID(uint8_t *rev)
 
   const uint8_t chipId = id & ST25R3916_REG_IC_IDENTITY_ic_type_mask;
 
-  const bool isChipIdValid =
-    chipId == ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916 ||
-    chipId == ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916b;
-
-  if (!isChipIdValid) {
-    return false;
-  }
-
   if (rev) {
     *rev = (id & ST25R3916_REG_IC_IDENTITY_ic_rev_mask);
   }
 
-  return true;
+  return (chipId == ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916 ||
+          chipId == ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916b);
 }
 
 /*******************************************************************************/
