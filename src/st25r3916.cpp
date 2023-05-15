@@ -478,23 +478,18 @@ ReturnCode RfalRfST25R3916Class::st25r3916SetStartGPTimer(uint16_t gpt_8fcs, uin
 /*******************************************************************************/
 bool RfalRfST25R3916Class::st25r3916CheckChipID(uint8_t *rev)
 {
-  uint8_t ID;
+  uint8_t id;
+  st25r3916ReadRegister(ST25R3916_REG_IC_IDENTITY, &id);
 
-  ID = 0;
-  st25r3916ReadRegister(ST25R3916_REG_IC_IDENTITY, &ID);
+  const uint8_t chipId = id & ST25R3916_REG_IC_IDENTITY_ic_type_mask;
 
-  /* Check if IC Identity Register contains ST25R3916's IC type code */
-  if ((ID & ST25R3916_REG_IC_IDENTITY_ic_type_mask) != ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916) {
-    return false;
+  if (rev) {
+    *rev = (id & ST25R3916_REG_IC_IDENTITY_ic_rev_mask);
   }
 
-  if (rev != NULL) {
-    *rev = (ID & ST25R3916_REG_IC_IDENTITY_ic_rev_mask);
-  }
-
-  return true;
+  return (chipId == ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916 ||
+          chipId == ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916b);
 }
-
 
 /*******************************************************************************/
 ReturnCode RfalRfST25R3916Class::st25r3916GetRegsDump(t_st25r3916Regs *regDump)

@@ -974,6 +974,7 @@
 #define ST25R3916_REG_IC_IDENTITY_ic_type1                    (1U<<4)
 #define ST25R3916_REG_IC_IDENTITY_ic_type0                    (1U<<3)
 #define ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916           (5U<<3)
+#define ST25R3916_REG_IC_IDENTITY_ic_type_st25r3916b          (6U<<3)
 #define ST25R3916_REG_IC_IDENTITY_ic_type_mask                (0x1fU<<3)
 #define ST25R3916_REG_IC_IDENTITY_ic_type_shift               (3U)
 #define ST25R3916_REG_IC_IDENTITY_ic_rev2                     (1U<<2)
