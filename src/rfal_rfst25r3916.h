@@ -36,7 +36,8 @@
 * INCLUDES
 ******************************************************************************
 */
-
+#include "st25r3916_config.h"
+#include "rfal_config.h"
 #include "SPI.h"
 #include "Wire.h"
 #include "rfal_rf.h"
@@ -52,9 +53,22 @@
 
 /*
  ******************************************************************************
- * ENABLE SWITCHES
+ * ENABLE SWITCHS
  ******************************************************************************
  */
+
+#ifndef RFAL_FEATURE_LISTEN_MODE
+  #define RFAL_FEATURE_LISTEN_MODE    false    /* Listen Mode configuration missing. Disabled by default */
+#endif /* RFAL_FEATURE_LISTEN_MODE */
+
+#ifndef RFAL_FEATURE_WAKEUP_MODE
+  #define RFAL_FEATURE_WAKEUP_MODE    false    /* Wake-Up mode configuration missing. Disabled by default */
+#endif /* RFAL_FEATURE_WAKEUP_MODE */
+
+#ifndef RFAL_FEATURE_LOWPOWER_MODE
+  #define RFAL_FEATURE_LOWPOWER_MODE  false   /* Low Power mode configuration missing. Disabled by default */
+#endif /* RFAL_FEATURE_LOWPOWER_MODE */
+
 
 /*
 ******************************************************************************
@@ -69,11 +83,29 @@ typedef struct {
   ReturnCode              status;      /*!< Current status/error of the transceive              */
 
   rfalTransceiveContext   ctx;         /*!< The transceive context given by the caller          */
-
 } rfalTxRx;
 
 
-/*! Struct that holds all context for the Listen Mode                                             */
+/*! Struct that holds certain WU mode information to be retrieved by rfalWakeUpModeGetInfo        */
+typedef struct {
+  bool                 irqWut;     /*!< Wake-Up Timer IRQ received (cleared upon read)          */
+
+  struct {
+    uint8_t          lastMeas;   /*!< Value of the latest measurement                         */
+    bool             irqWu;      /*!< Amplitude WU IRQ received (cleared upon read)           */
+  } indAmp;                        /*!< Inductive Amplitude                                     */
+  struct {
+    uint8_t          lastMeas;   /*!< Value of the latest measurement                         */
+    bool             irqWu;      /*!< Phase WU IRQ received (cleared upon read)               */
+  } indPha;                        /*!< Inductive Phase                                         */
+  struct {
+    uint8_t          lastMeas;   /*!< Value of the latest measurement                         */
+    bool             irqWu;      /*!< Capacitive WU IRQ received (cleared upon read)          */
+  } cap;                           /*!< Capacitance                                             */
+} rfalWakeUpData;
+
+
+/*! Local struct that holds context for the Listen Mode                                          */
 typedef struct {
   rfalLmState             state;       /*!< Current Listen Mode state                           */
   uint32_t                mdMask;      /*!< Listen Mode mask used                               */
@@ -89,11 +121,18 @@ typedef struct {
 } rfalLm;
 
 
-/*! Struct that holds all context for the Wake-Up Mode                                             */
+/*! Struct that holds all context for the Wake-Up Mode                                            */
 typedef struct {
-  rfalWumState            state;       /*!< Current Wake-Up Mode state                           */
-  rfalWakeUpConfig        cfg;         /*!< Current Wake-Up Mode context                         */
+  rfalWumState            state;       /*!< Current Wake-Up Mode state                          */
+  rfalWakeUpConfig        cfg;         /*!< Current Wake-Up Mode config                         */
+  rfalWakeUpData          info;        /*!< Current Wake-Up Mode info                           */
 } rfalWum;
+
+
+/*! Struct that holds all context for the Low Power Mode                                          */
+typedef struct {
+  bool                    isRunning;
+} rfalLpm;
 
 
 /*! Struct that holds the timings GT and FDTs                           */
@@ -101,13 +140,16 @@ typedef struct {
   uint32_t                GT;          /*!< GT in 1/fc                */
   uint32_t                FDTListen;   /*!< FDTListen in 1/fc         */
   uint32_t                FDTPoll;     /*!< FDTPoll in 1/fc           */
+  uint8_t                 nTRFW;       /*!< n*TRFW (last two bits) used during RF CA  */
 } rfalTimings;
 
 
 /*! Struct that holds the software timers                               */
 typedef struct {
   uint32_t                GT;          /*!< RFAL's GT timer           */
-  uint32_t                RXE;         /*!< Timer between RXS and RXE */
+  uint32_t                RXE;         /*!< Timer between RXS - RXE   */
+  uint32_t                PPON2;       /*!< Timer between TXE - PPON2 */
+  uint32_t                txRx;        /*!< Transceive sanity timer   */
 } rfalTimers;
 
 
@@ -115,12 +157,13 @@ typedef struct {
 typedef struct {
   rfalPreTxRxCallback     preTxRx;     /*!< RFAL's Pre TxRx callback  */
   rfalPostTxRxCallback    postTxRx;    /*!< RFAL's Post TxRx callback */
+  rfalSyncTxRxCallback    syncTxRx;    /*!< RFAL's Sync TxRx callback */
 } rfalCallbacks;
 
 
 /*! Struct that holds counters to control the FIFO on Tx and Rx                                                                          */
 typedef struct {
-  uint16_t                expWL;       /*!< The amount of bytes expected to be Tx when a WL interrupt occurs                          */
+  uint16_t                expWL;       /*!< The amount of bytes expected to be Tx when a WL interrupt occours                          */
   uint16_t                bytesTotal;  /*!< Total bytes to be transmitted OR the total bytes received                                  */
   uint16_t                bytesWritten;/*!< Amount of bytes already written on FIFO (Tx) OR read (RX) from FIFO and written on rxBuffer*/
   uint8_t                 status[ST25R3916_FIFO_STATUS_LEN];   /*!< FIFO Status Registers                                              */
@@ -135,9 +178,27 @@ typedef struct {
 } rfalConfigs;
 
 
-/*! Struct that holds NFC-F data - Used only inside rfalFelicaPoll() (static to avoid adding it into stack) */
+/*! Struct that holds NFC-A data - Used only inside rfalISO14443ATransceiveAnticollisionFrame()          */
 typedef struct {
-  rfalFeliCaPollRes pollResponses[RFAL_FELICA_POLL_MAX_SLOTS];   /* FeliCa Poll response container for 16 slots */
+  uint8_t                 collByte;    /*!< NFC-A Anticollision collision byte                         */
+  uint8_t                 *buf;        /*!< NFC-A Anticollision frame buffer                           */
+  uint8_t                 *bytesToSend;/*!< NFC-A Anticollision NFCID|UID byte context                 */
+  uint8_t                 *bitsToSend; /*!< NFC-A Anticollision NFCID|UID bit context                  */
+  uint16_t                *rxLength;   /*!< NFC-A Anticollision received length                        */
+} rfalNfcaWorkingData;
+
+
+/*! Struct that holds NFC-F data - Used only inside rfalFelicaPoll()                                           */
+typedef struct {
+  uint16_t           actLen;                                      /* Received length                         */
+  rfalFeliCaPollRes *pollResList;                                 /* Location of NFC-F device list           */
+  uint8_t            pollResListSize;                             /* Size of NFC-F device list               */
+  uint8_t            devDetected;                                 /* Number of devices detected              */
+  uint8_t            colDetected;                                 /* Number of collisions detected           */
+  uint8_t            *devicesDetected;                            /* Location to place number of devices     */
+  uint8_t            *collisionsDetected;                         /* Location to place number of collisions  */
+  rfalEHandling      curHandling;                                 /* RFAL's error handling                   */
+  rfalFeliCaPollRes  pollResponses[RFAL_FELICA_POLL_MAX_SLOTS];   /* FeliCa Poll response buffer (16 slots)  */
 } rfalNfcfWorkingData;
 
 
@@ -174,9 +235,32 @@ typedef struct {
   rfalTimers              tmr;       /*!< RFAL's Software timers                        */
   rfalCallbacks           callbacks; /*!< RFAL's callbacks                              */
 
+#if RFAL_FEATURE_LISTEN_MODE
+  rfalLm                  Lm;        /*!< RFAL's listen mode management                 */
+#endif /* RFAL_FEATURE_LISTEN_MODE */
+
+#if RFAL_FEATURE_WAKEUP_MODE
   rfalWum                 wum;       /*!< RFAL's Wake-up mode management                */
+#endif /* RFAL_FEATURE_WAKEUP_MODE */
+
+
+#if RFAL_FEATURE_LOWPOWER_MODE
+  rfalLpm                 lpm;       /*!< RFAL's Low power mode management              */
+#endif /* RFAL_FEATURE_LOWPOWER_MODE */
+
+
+#if RFAL_FEATURE_NFCA
+  rfalNfcaWorkingData     nfcaData;  /*!< RFAL's working data when supporting NFC-A     */
+#endif /* RFAL_FEATURE_NFCA */
+
+#if RFAL_FEATURE_NFCF
   rfalNfcfWorkingData     nfcfData;  /*!< RFAL's working data when supporting NFC-F     */
+#endif /* RFAL_FEATURE_NFCF */
+
+#if RFAL_FEATURE_NFCV
   rfalNfcvWorkingData     nfcvData;  /*!< RFAL's working data when performing NFC-V     */
+#endif /* RFAL_FEATURE_NFCV */
+
 } rfal;
 
 
@@ -203,6 +287,8 @@ typedef union { /*  PRQA S 0750 # MISRA 19.2 - Both members are of the same type
   uint8_t PTMem_F[ST25R3916_PTM_F_LEN];       /*!< PT_Memory area allocated for NFC-F configuration               */
   uint8_t TSN[ST25R3916_PTM_TSN_LEN];         /*!< PT_Memory area allocated for TSN - Random numbers              */
 } t_rfalPTMem;
+
+
 
 /*! Struct for Analog Config Look Up Table Update */
 typedef struct {
@@ -247,18 +333,20 @@ typedef void (*ST25R3916IrqHandler)(void);
 #define RFAL_ST25R3916_NRT_DISABLED     0U                                            /*!< NRT Disabled: All 0 No-response timer is not started, wait forever              */
 #define RFAL_ST25R3916_MRT_MAX_1FC      rfalConv64fcTo1fc( 0x00FFU )                  /*!< Max MRT steps in 1fc (0x00FF steps of 64/fc   => 0x00FF * 4.72us = 1.2ms )      */
 #define RFAL_ST25R3916_MRT_MIN_1FC      rfalConv64fcTo1fc( 0x0004U )                  /*!< Min MRT steps in 1fc ( 0<=mrt<=4 ; 4 (64/fc)  => 0x0004 * 4.72us = 18.88us )    */
-#define RFAL_ST25R3916_GT_MAX_1FC       rfalConvMsTo1fc( 5000U )                      /*!< Max GT value allowed in 1/fc                                                    */
+#define RFAL_ST25R3916_GT_MAX_1FC       rfalConvMsTo1fc( 6000U )                      /*!< Max GT value allowed in 1/fc (SFGI=14 => SFGT + dSFGT = 5.4s)                   */
 #define RFAL_ST25R3916_GT_MIN_1FC       rfalConvMsTo1fc(RFAL_ST25R3916_SW_TMR_MIN_1MS)/*!< Min GT value allowed in 1/fc                                                    */
 #define RFAL_ST25R3916_SW_TMR_MIN_1MS   1U                                            /*!< Min value of a SW timer in ms                                                   */
 
 #define RFAL_OBSMODE_DISABLE            0x00U                                         /*!< Observation Mode disabled                                                       */
 
-#define RFAL_RX_INCOMPLETE_MAXLEN       (uint8_t)1U                                   /*!< Threshold value where incoming rx may be considered as incomplete               */
+#define RFAL_RX_INC_BYTE_LEN            (uint8_t)1U                                   /*!< Threshold where incoming rx shall be considered incomplete byte NFC - T2T       */
 #define RFAL_EMVCO_RX_MAXLEN            (uint8_t)4U                                   /*!< Maximum value where EMVCo to apply special error handling                       */
 
-#define RFAL_NORXE_TOUT                 50U                                           /*!< Timeout to be used on a potential missing RXE - Silicon ST25R3916 Errata #TBD   */
+#define RFAL_NORXE_TOUT                 50U                                           /*!< Timeout to be used on a potential missing RXE - Silicon ST25R3916 Errata #2.1.2 */
 
 #define RFAL_ISO14443A_SDD_RES_LEN      5U                                            /*!< SDD_RES | Anticollision (UID CLn) length  -  rfalNfcaSddRes                     */
+#define RFAL_ISO14443A_CRC_INTVAL       0x6363                                        /*!< ISO14443 CRC Initial Value|Register                                             */
+
 
 #define RFAL_FELICA_POLL_DELAY_TIME     512U                                          /*!<  FeliCa Poll Processing time is 2.417 ms ~512*64/fc Digital 1.1 A4              */
 #define RFAL_FELICA_POLL_SLOT_TIME      256U                                          /*!<  FeliCa Poll Time Slot duration is 1.208 ms ~256*64/fc Digital 1.1 A4           */
@@ -272,15 +360,22 @@ typedef void (*ST25R3916IrqHandler)(void);
 #define RFAL_ISO15693_INV_RES_LEN       12U                                           /*!< ISO15693 Inventory response length with CRC (bytes)                             */
 #define RFAL_ISO15693_INV_RES_DUR       4U                                            /*!< ISO15693 Inventory response duration @ 26 kbps (ms)                             */
 
+#define RFAL_WU_MIN_WEIGHT_VAL          4U                                            /*!< ST25R3916 minimum Wake-up weight value                                         */
 
 /*******************************************************************************/
 
 #define RFAL_LM_GT                      rfalConvUsTo1fc(100U)                         /*!< Listen Mode Guard Time enforced (GT - Passive; TIRFG - Active)                  */
 #define RFAL_FDT_POLL_ADJUSTMENT        rfalConvUsTo1fc(80U)                          /*!< FDT Poll adjustment: Time between the expiration of GPT to the actual Tx        */
 #define RFAL_FDT_LISTEN_MRT_ADJUSTMENT  64U                                           /*!< MRT jitter adjustment: timeout will be between [ tout ; tout + 64 cycles ]      */
-#define RFAL_AP2P_FIELDOFF_TRFW         rfalConv8fcTo1fc(64U)                         /*!< Time after TXE and Field Off in AP2P Trfw: 37.76us -> 64  (8/fc)                */
-#define RFAL_ST25R3916_AAT_SETTLE_OFF   20U                                           /*!< Time in ms required for AAT pins and Osc to settle after en bit off             */
-#define RFAL_ST25R3916_AAT_SETTLE_ON    5U                                            /*!< Time in ms required for AAT pins and Osc to settle after en bit on              */
+#define RFAL_AP2P_FIELDOFF_TCMDOFF      1356U                                         /*!< Time after TXE and Field Off t,CMD,OFF     Activity 2.1  3.2.1.3 & C            */
+
+#ifndef RFAL_ST25R3916_AAT_SETTLE
+  #define RFAL_ST25R3916_AAT_SETTLE   5U                                            /*!< Time in ms required for AAT pins and Osc to settle after en bit set             */
+#endif /* RFAL_ST25R3916_AAT_SETTLE */
+
+#ifndef RFAL_ST25R3916B_AAT_SETTLE
+  #define RFAL_ST25R3916B_AAT_SETTLE  ST25R3916_REG_MEAS_TX_DELAY_meas_tx_del_4_83ms/*!< Time between Oscilator stable and TX On in meas_tx_del steps                    */
+#endif /* RFAL_ST25R3916B_AAT_SETTLE */
 
 
 /*! FWT adjustment:
@@ -294,7 +389,7 @@ typedef void (*ST25R3916IrqHandler)(void);
 
 /*! FWT ISO14443B adjustment:
  *    SOF (14etu) + 1Byte (10etu) + 1etu (IRQ comes 1etu after first byte) - 3etu (ST25R3916 sends TXE 3etu after) */
-#define RFAL_FWT_B_ADJUSTMENT           ((14U + 10U + 1U - 3U) * 128U)
+#define RFAL_FWT_B_ADJUSTMENT           (((14U + 10U + 1U) - 3U) * 128U)
 
 
 /*! FWT FeliCa 212 adjustment:
@@ -334,7 +429,7 @@ typedef void (*ST25R3916IrqHandler)(void);
  * ISO15693 2000  8.4  t1 MIN = 4192/fc
  * ISO15693 2009  9.1  t1 MIN = 4320/fc
  * Digital 2.1 B.5 FDTV,LISTEN,MIN  = 4310/fc
- * Set FDT Listen one step earlier than on the more recent spec versions for greater interoperability
+ * Set FDT Listen one step earlier than on the more recent spec versions for greater interoprability
  */
 #define RFAL_FDT_LISTEN_V_ADJUSTMENT    64U
 
@@ -353,6 +448,13 @@ typedef void (*ST25R3916IrqHandler)(void);
 * GLOBAL MACROS
 ******************************************************************************
 */
+
+/*! Calculates Transceive Sanity Timer. It accounts for the slowest bit rate and the longest data format
+ *    1s for transmission and reception of a 4K message at 106kpbs (~425ms each direction)
+ *       plus TxRx preparation and FIFO load over Serial Interface                                      */
+#define rfalCalcSanityTmr( fwt )                 (uint16_t)(1000U + rfalConv1fcToMs((fwt)))
+
+#define rfalGennTRFW( n )                        ((uint8_t)(((n)+1U)%7U))                                          /*!< Generate next n*TRFW used for RFCA: modulo a prime to avoid alias effects */
 
 #define rfalCalcNumBytes( nBits )                (((uint32_t)(nBits) + 7U) / 8U)                                   /*!< Returns the number of bytes required to fit given the number of bits */
 
@@ -375,6 +477,13 @@ typedef void (*ST25R3916IrqHandler)(void);
 #define rfalAdjACBR( b )                         (((uint16_t)(b) >= (uint16_t)RFAL_BR_52p97) ? (uint16_t)(b) : ((uint16_t)(b)+1U))          /*!< Adjusts ST25R391x Bit rate to Analog Configuration              */
 #define rfalConvBR2ACBR( b )                     (((rfalAdjACBR((b)))<<RFAL_ANALOG_CONFIG_BITRATE_SHIFT) & RFAL_ANALOG_CONFIG_BITRATE_MASK) /*!< Converts ST25R391x Bit rate to Analog Configuration bit rate id */
 
+#define rfalConvTDFormat( v )                    ((uint16_t)(v) << 8U) /*!< Converts a uint8_t to the format used in SW Tag Detection */
+#define rfalAddFracTDFormat( fd )                ((((uint16_t)(fd)) & 0x03U) * 64U)
+
+
+#define rfalRunBlocking( e, fn )                 do{ (e)=(fn); rfalWorker(); }while( (e) == ERR_BUSY )
+
+
 
 class RfalRfST25R3916Class : public RfalRfClass {
   public:
@@ -393,6 +502,7 @@ class RfalRfST25R3916Class : public RfalRfClass {
     void rfalSetUpperLayerCallback(rfalUpperLayerCallback pFunc);
     void rfalSetPreTxRxCallback(rfalPreTxRxCallback pFunc);
     void rfalSetPostTxRxCallback(rfalPostTxRxCallback pFunc);
+    void rfalSetLmEonCallback(rfalLmEonCallback pFunc);
     ReturnCode rfalDeinitialize(void);
     ReturnCode rfalSetMode(rfalMode mode, rfalBitRate txBR, rfalBitRate rxBR);
     rfalMode rfalGetMode(void);
@@ -400,7 +510,7 @@ class RfalRfST25R3916Class : public RfalRfClass {
     ReturnCode rfalGetBitRate(rfalBitRate *txBR, rfalBitRate *rxBR);
     void rfalSetErrorHandling(rfalEHandling eHandling);
     rfalEHandling rfalGetErrorHandling(void);
-    void rfalSetObsvMode(uint8_t txMode, uint8_t rxMode);
+    void rfalSetObsvMode(uint32_t txMode, uint32_t rxMode);
     void rfalGetObsvMode(uint8_t *txMode, uint8_t *rxMode);
     void rfalDisableObsvMode(void);
     void rfalSetFDTPoll(uint32_t FDTPoll);
@@ -419,12 +529,25 @@ class RfalRfST25R3916Class : public RfalRfClass {
     bool rfalIsTransceiveInRx(void);
     ReturnCode rfalGetTransceiveRSSI(uint16_t *rssi);
     void rfalWorker(void);
+    void rfalSetSyncTxRxCallback(rfalSyncTxRxCallback pFunc);
+    bool rfalIsTransceiveSubcDetected(void);
+    ReturnCode rfalISO14443AStartTransceiveAnticollisionFrame(uint8_t *buf, uint8_t *bytesToSend, uint8_t *bitsToSend, uint16_t *rxLength, uint32_t fwt);
+    ReturnCode rfalISO14443AGetTransceiveAnticollisionFrameStatus(void);
+
+    ReturnCode rfalLowPowerModeStart(rfalLpMode mode);
+    ReturnCode rfalLowPowerModeStop(void);
+    ReturnCode rfalChipMeasureIQ(int8_t *resI, int8_t *resQ);
+    ReturnCode rfalChipMeasureCombinedIQ(uint8_t *result);
+    ReturnCode rfalChipSetAntennaMode(bool single, bool rfiox);
+    ReturnCode rfalRunListenModeWorker(void);
     ReturnCode rfalISO14443ATransceiveShortFrame(rfal14443AShortFrameCmd txCmd, uint8_t *rxBuf, uint8_t rxBufLen, uint16_t *rxRcvdLen, uint32_t fwt);
     ReturnCode rfalISO14443ATransceiveAnticollisionFrame(uint8_t *buf, uint8_t *bytesToSend, uint8_t *bitsToSend, uint16_t *rxLength, uint32_t fwt);
     ReturnCode rfalFeliCaPoll(rfalFeliCaPollSlots slots, uint16_t sysCode, uint8_t reqCode, rfalFeliCaPollRes *pollResList, uint8_t pollResListSize, uint8_t *devicesDetected, uint8_t *collisionsDetected);
+    ReturnCode rfalStartFeliCaPoll(rfalFeliCaPollSlots slots, uint16_t sysCode, uint8_t reqCode, rfalFeliCaPollRes *pollResList, uint8_t pollResListSize, uint8_t *devicesDetected, uint8_t *collisionsDetected);
+    ReturnCode rfalGetFeliCaPollStatus(void);
     ReturnCode rfalISO15693TransceiveAnticollisionFrame(uint8_t *txBuf, uint8_t txBufLen, uint8_t *rxBuf, uint8_t rxBufLen, uint16_t *actLen);
     ReturnCode rfalISO15693TransceiveEOFAnticollision(uint8_t *rxBuf, uint8_t rxBufLen, uint16_t *actLen);
-    ReturnCode rfalISO15693TransceiveEOF(uint8_t *rxBuf, uint8_t rxBufLen, uint16_t *actLen);
+    ReturnCode rfalISO15693TransceiveEOF(uint8_t *rxBuf, uint16_t rxBufLen, uint16_t *actLen);
     ReturnCode rfalTransceiveBlockingTx(uint8_t *txBuf, uint16_t txBufLen, uint8_t *rxBuf, uint16_t rxBufLen, uint16_t *actLen, uint32_t flags, uint32_t fwt);
     ReturnCode rfalTransceiveBlockingRx(void);
     ReturnCode rfalTransceiveBlockingTxRx(uint8_t *txBuf, uint16_t txBufLen, uint8_t *rxBuf, uint16_t rxBufLen, uint16_t *actLen, uint32_t flags, uint32_t fwt);
@@ -434,10 +557,11 @@ class RfalRfST25R3916Class : public RfalRfClass {
     ReturnCode rfalListenStop(void);
     rfalLmState rfalListenGetState(bool *dataFlag, rfalBitRate *lastBR);
     ReturnCode rfalListenSetState(rfalLmState newSt);
+    bool rfalWakeUpModeIsEnabled(void);
     ReturnCode rfalWakeUpModeStart(const rfalWakeUpConfig *config);
+    ReturnCode rfalWakeUpModeGetInfo(bool force, rfalWakeUpInfo *info);
     bool rfalWakeUpModeHasWoke(void);
     ReturnCode rfalWakeUpModeStop(void);
-
 
     /*
     ******************************************************************************
@@ -828,15 +952,15 @@ class RfalRfST25R3916Class : public RfalRfClass {
      *
      *  \param[in] config : ISO15693 phy related configuration (See #iso15693PhyConfig_t)
      *  \param[out] needed_stream_config : return a pointer to the stream config
-     *              needed for this iso15693 config. To be used for configure RF chip.
+     *              needed for this rfalIso15693 config. To be used for configure RF chip.
      *
      *  \return ERR_IO : Error during communication.
      *  \return ERR_NONE : No error.
      *
      *****************************************************************************
      */
-    ReturnCode iso15693PhyConfigure(const iso15693PhyConfig_t *config,
-                                    const struct iso15693StreamConfig **needed_stream_config);
+    ReturnCode rfalIso15693PhyConfigure(const rfalIso15693PhyConfig_t *config,
+                                        const struct rfalIso15693StreamConfig **needed_stream_config);
 
     /*!
      *****************************************************************************
@@ -851,7 +975,7 @@ class RfalRfST25R3916Class : public RfalRfClass {
      *
      *****************************************************************************
      */
-    ReturnCode iso15693PhyGetConfiguration(iso15693PhyConfig_t *config);
+    ReturnCode rfalIso15693PhyGetConfiguration(rfalIso15693PhyConfig_t *config);
 
     /*!
      *****************************************************************************
@@ -882,9 +1006,9 @@ class RfalRfST25R3916Class : public RfalRfClass {
      *
      *****************************************************************************
      */
-    ReturnCode iso15693VCDCode(uint8_t *buffer, uint16_t length, bool sendCrc, bool sendFlags, bool picopassMode,
-                               uint16_t *subbit_total_length, uint16_t *offset,
-                               uint8_t *outbuf, uint16_t outBufSize, uint16_t *actOutBufSize);
+    ReturnCode rfalIso15693VCDCode(uint8_t *buffer, uint16_t length, bool sendCrc, bool sendFlags, bool picopassMode,
+                                   uint16_t *subbit_total_length, uint16_t *offset,
+                                   uint8_t *outbuf, uint16_t outBufSize, uint16_t *actOutBufSize);
 
 
     /*!
@@ -913,14 +1037,14 @@ class RfalRfST25R3916Class : public RfalRfClass {
      *
      *****************************************************************************
      */
-    ReturnCode iso15693VICCDecode(const uint8_t *inBuf,
-                                  uint16_t inBufLen,
-                                  uint8_t *outBuf,
-                                  uint16_t outBufLen,
-                                  uint16_t *outBufPos,
-                                  uint16_t *bitsBeforeCol,
-                                  uint16_t ignoreBits,
-                                  bool picopassMode);
+    ReturnCode rfalIso15693VICCDecode(const uint8_t *inBuf,
+                                      uint16_t inBufLen,
+                                      uint8_t *outBuf,
+                                      uint16_t outBufLen,
+                                      uint16_t *outBufPos,
+                                      uint16_t *bitsBeforeCol,
+                                      uint16_t ignoreBits,
+                                      bool picopassMode);
 
 
     /*
@@ -961,7 +1085,7 @@ class RfalRfST25R3916Class : public RfalRfClass {
      *
      *****************************************************************************
      */
-    void st25r3916OscOn(void);
+    ReturnCode st25r3916OscOn(void);
 
     /*!
      *****************************************************************************
@@ -1341,7 +1465,22 @@ class RfalRfST25R3916Class : public RfalRfClass {
      */
     ReturnCode st25r3916GetRSSI(uint16_t *amRssi, uint16_t *pmRssi);
 
-
+    /*!
+    *****************************************************************************
+    * \brief  Set Antenna mode
+    *
+    * Sets the antenna mode.
+    * Differential or single ended antenna mode (RFO1 or RFO2)
+    *
+    *  \param[in]    single:  FALSE differential ; single ended mode
+    *  \param[in]     rfiox:  FALSE   RFI1/RFO1  ; TRUE   RFI2/RFO2
+    *
+    * \return  RFAL_ERR_IO      : Internal error
+    * \return  RFAL_ERR_NOTSUPP : Feature not supported
+    * \return  RFAL_ERR_NONE    : No error
+    *****************************************************************************
+    */
+    ReturnCode st25r3916SetAntennaMode(bool single, bool rfiox);
     /*
     ******************************************************************************
     * RFAL ST25R3916 COM FUNCTION PROTOTYPES
@@ -1942,25 +2081,26 @@ class RfalRfST25R3916Class : public RfalRfClass {
     void rfalCleanupTransceive(void);
     void rfalErrorHandling(void);
     ReturnCode rfalRunTransceiveWorker(void);
+
+#if RFAL_FEATURE_WAKEUP_MODE
     void rfalRunWakeUpModeWorker(void);
+    uint16_t rfalWakeUpModeFilter(uint16_t curRef, uint16_t curVal, uint8_t weight);
+#endif /* RFAL_FEATURE_WAKEUP_MODE */
 
     void rfalFIFOStatusUpdate(void);
     void rfalFIFOStatusClear(void);
     bool rfalFIFOStatusIsMissingPar(void);
     bool rfalFIFOStatusIsIncompleteByte(void);
-    uint8_t rfalFIFOStatusGetNumBytes(void);
+    uint16_t rfalFIFOStatusGetNumBytes(void);
     uint8_t rfalFIFOGetNumIncompleteBits(void);
     rfalAnalogConfigNum rfalAnalogConfigSearch(rfalAnalogConfigId configId, uint16_t *configOffset);
     uint16_t rfalCrcUpdateCcitt(uint16_t crcSeed, uint8_t dataByte);
-    ReturnCode st25r3911ExecuteCommandAndGetResult(uint8_t cmd, uint8_t resreg, uint8_t sleeptime, uint8_t *result);
     ReturnCode aatHillClimb(const struct st25r3916AatTuneParams *tuningParams, struct st25r3916AatTuneResult *tuningStatus);
     int32_t aatGreedyDescent(uint32_t *f_min, const struct st25r3916AatTuneParams *tuningParams, struct st25r3916AatTuneResult *tuningStatus, int32_t previousDir);
     int32_t aatSteepestDescent(uint32_t *f_min, const struct st25r3916AatTuneParams *tuningParams, struct st25r3916AatTuneResult *tuningStatus, int32_t previousDir, int32_t previousDir2);
     ReturnCode aatMeasure(uint8_t serCap, uint8_t parCap, uint8_t *amplitude, uint8_t *phase, uint16_t *measureCnt);
     uint32_t aatCalcF(const struct st25r3916AatTuneParams *tuningParams, uint8_t amplitude, uint8_t phase);
     ReturnCode aatStepDacVals(const struct st25r3916AatTuneParams *tuningParams, uint8_t *a, uint8_t *b, int32_t dir);
-    void setISRPending(void);
-    bool isBusBusy(void);
     /*!
      *****************************************************************************
      *  \brief  ISR Service routine
@@ -1978,21 +2118,20 @@ class RfalRfST25R3916Class : public RfalRfClass {
 
     rfal gRFAL;              /*!< RFAL module instance               */
     rfalAnalogConfigMgmt gRfalAnalogConfigMgmt;  /*!< Analog Configuration LUT management */
-    iso15693PhyConfig_t iso15693PhyConfig; /*!< current phy configuration */
+    rfalIso15693PhyConfig_t rfalIso15693PhyConfig; /*!< current phy configuration */
     uint32_t gST25R3916NRT_64fcs;
     volatile st25r3916Interrupt st25r3916interrupt; /*!< Instance of ST25R3916 interrupt */
     uint32_t timerStopwatchTick;
     bool i2c_enabled;
     volatile bool isr_pending;
-    volatile bool bus_busy;
     ST25R3916IrqHandler irq_handler;
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-ReturnCode iso15693PhyVCDCode1Of4(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen);
-ReturnCode iso15693PhyVCDCode1Of256(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen);
+ReturnCode rfalIso15693PhyVCDCode1Of4(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen);
+ReturnCode rfalIso15693PhyVCDCode1Of256(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen);
 #ifdef __cplusplus
 }
 #endif

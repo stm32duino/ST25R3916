@@ -42,6 +42,16 @@
 
 /*
 ******************************************************************************
+* ENABLE SWITCH
+******************************************************************************
+*/
+
+#ifndef RFAL_FEATURE_NFCV
+  #define RFAL_FEATURE_NFCV   false    /* NFC-V module configuration missing. Disabled by default */
+#endif
+
+/*
+******************************************************************************
 * GLOBAL DATATYPES
 ******************************************************************************
 */
@@ -49,18 +59,18 @@
 typedef enum {
   ISO15693_VCD_CODING_1_4,
   ISO15693_VCD_CODING_1_256
-} iso15693VcdCoding_t;
+} rfalIso15693VcdCoding_t;
 
 /*! Enum holding possible VICC datarates */
 
 /*! Configuration parameter used by #iso15693PhyConfigure  */
 typedef struct {
-  iso15693VcdCoding_t coding;           /*!< desired VCD coding                                       */
+  rfalIso15693VcdCoding_t coding;           /*!< desired VCD coding                                       */
   uint32_t                speedMode;    /*!< 0: normal mode, 1: 2^1 = x2 Fast mode, 2 : 2^2 = x4 mode, 3 : 2^3 = x8 mode - all rx pulse numbers and times are divided by 1,2,4,8 */
-} iso15693PhyConfig_t;
+} rfalIso15693PhyConfig_t;
 
 /*! Parameters how the stream mode should work */
-struct iso15693StreamConfig {
+struct rfalIso15693StreamConfig {
   uint8_t useBPSK;              /*!< 0: subcarrier, 1:BPSK */
   uint8_t din;                  /*!< the divider for the in subcarrier frequency: fc/2^din  */
   uint8_t dout;                 /*!< the divider for the in subcarrier frequency fc/2^dout */

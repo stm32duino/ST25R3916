@@ -64,7 +64,7 @@
 #define RFAL_ANALOG_CONFIG_POLL_LISTEN_MODE_MASK    (0x8000U) /*!< Mask bit of Poll Mode in Analog Configuration ID             */
 #define RFAL_ANALOG_CONFIG_TECH_MASK                (0x7F00U) /*!< Mask bits for Technology in Analog Configuration ID          */
 #define RFAL_ANALOG_CONFIG_BITRATE_MASK             (0x00F0U) /*!< Mask bits for Bit rate in Analog Configuration ID            */
-#define RFAL_ANALOG_CONFIG_DIRECTION_MASK           (0x0003U) /*!< Mask bits for Direction in Analog Configuration ID           */
+#define RFAL_ANALOG_CONFIG_DIRECTION_MASK           (0x000FU) /*!< Mask bits for Direction in Analog Configuration ID           */
 #define RFAL_ANALOG_CONFIG_CHIP_SPECIFIC_MASK       (0x00FFU) /*!< Mask bits for Chip Specific Technology                       */
 
 #define RFAL_ANALOG_CONFIG_POLL_LISTEN_MODE_SHIFT   (15U)     /*!< Shift value of Poll Mode in Analog Configuration ID          */
@@ -91,13 +91,15 @@
 #define RFAL_ANALOG_CONFIG_BITRATE_1695             (0x0050U) /*!< 1695kbits/s settings in Analog Configuration ID              */
 #define RFAL_ANALOG_CONFIG_BITRATE_3390             (0x0060U) /*!< 3390kbits/s settings in Analog Configuration ID              */
 #define RFAL_ANALOG_CONFIG_BITRATE_6780             (0x0070U) /*!< 6780kbits/s settings in Analog Configuration ID              */
-#define RFAL_ANALOG_CONFIG_BITRATE_1OF4             (0x00C0U) /*!< 1 out of 4 for NFC-V setting in Analog Configuration ID      */
-#define RFAL_ANALOG_CONFIG_BITRATE_1OF256           (0x00D0U) /*!< 1 out of 256 for NFC-V setting in Analog Configuration ID    */
+#define RFAL_ANALOG_CONFIG_BITRATE_53               (0x00B0U) /*!< 53kbits/s (ISO15693 x2) setting in Analog Configuration ID   */
+#define RFAL_ANALOG_CONFIG_BITRATE_26               (0x00C0U) /*!< 26kbit/s (1 out of 4) NFC-V setting Analog Configuration ID  */
+#define RFAL_ANALOG_CONFIG_BITRATE_1p6              (0x00D0U) /*!< 1.6kbit/s (1 out of 256) NFC-V setting Analog Config ID      */
 
 #define RFAL_ANALOG_CONFIG_NO_DIRECTION             (0x0000U) /*!< No direction setting in Analog Conf ID (Chip Specific only)  */
 #define RFAL_ANALOG_CONFIG_TX                       (0x0001U) /*!< Transmission bit setting in Analog Configuration ID          */
 #define RFAL_ANALOG_CONFIG_RX                       (0x0002U) /*!< Reception bit setting in Analog Configuration ID             */
 #define RFAL_ANALOG_CONFIG_ANTICOL                  (0x0003U)  /*!< Anticollision setting in Analog Configuration ID             */
+#define RFAL_ANALOG_CONFIG_DPO                      (0x0004U) /*!< DPO setting in Analog Configuration ID                       */
 
 #define RFAL_ANALOG_CONFIG_CHIP_INIT                (0x0000U)  /*!< Chip-Specific event: Startup;Reset;Initialize                */
 #define RFAL_ANALOG_CONFIG_CHIP_DEINIT              (0x0001U)  /*!< Chip-Specific event: Deinitialize                            */
@@ -109,6 +111,24 @@
 #define RFAL_ANALOG_CONFIG_CHIP_LISTEN_OFF          (0x0007U)  /*!< Chip-Specific event: Listen Off                              */
 #define RFAL_ANALOG_CONFIG_CHIP_POLL_COMMON         (0x0008U)  /*!< Chip-Specific event: Poll common                             */
 #define RFAL_ANALOG_CONFIG_CHIP_LISTEN_COMMON       (0x0009U)  /*!< Chip-Specific event: Listen common                           */
+#define RFAL_ANALOG_CONFIG_CHIP_LOWPOWER_ON         (0x000AU)  /*!< Chip-Specific event: Low Power On                            */
+#define RFAL_ANALOG_CONFIG_CHIP_LOWPOWER_OFF        (0x000BU)  /*!< Chip-Specific event: Low Power Off                           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_00        (0x0010U)  /*!< Chip-Specific event: Power Level 00 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_01        (0x0011U)  /*!< Chip-Specific event: Power Level 01 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_02        (0x0012U)  /*!< Chip-Specific event: Power Level 02 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_03        (0x0013U)  /*!< Chip-Specific event: Power Level 03 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_04        (0x0014U)  /*!< Chip-Specific event: Power Level 04 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_05        (0x0015U)  /*!< Chip-Specific event: Power Level 05 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_06        (0x0016U)  /*!< Chip-Specific event: Power Level 06 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_07        (0x0017U)  /*!< Chip-Specific event: Power Level 07 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_08        (0x0018U)  /*!< Chip-Specific event: Power Level 08 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_09        (0x0019U)  /*!< Chip-Specific event: Power Level 09 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_10        (0x001AU)  /*!< Chip-Specific event: Power Level 10 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_11        (0x001BU)  /*!< Chip-Specific event: Power Level 11 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_12        (0x001CU)  /*!< Chip-Specific event: Power Level 12 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_13        (0x001DU)  /*!< Chip-Specific event: Power Level 13 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_14        (0x001EU)  /*!< Chip-Specific event: Power Level 14 (e.g DPO, WLC)           */
+#define RFAL_ANALOG_CONFIG_CHIP_POWER_LVL_15        (0x001FU)  /*!< Chip-Specific event: Power Level 15 (e.g DPO, WLC)           */
 
 #define RFAL_ANALOG_CONFIG_UPDATE_LAST              (0x00U)   /*!< Value indicating Last configuration set during update        */
 #define RFAL_ANALOG_CONFIG_UPDATE_MORE              (0x01U)   /*!< Value indicating More configuration set coming during update */
@@ -138,8 +158,8 @@
 #define RFAL_ANALOG_CONFIG_ID_IS_1695(id)           (RFAL_ANALOG_CONFIG_BITRATE_1695 & (id))   /*!< Check if ID indicates 1695kbits/s          */
 #define RFAL_ANALOG_CONFIG_ID_IS_3390(id)           (RFAL_ANALOG_CONFIG_BITRATE_3390 & (id))   /*!< Check if ID indicates 3390kbits/s          */
 #define RFAL_ANALOG_CONFIG_ID_IS_6780(id)           (RFAL_ANALOG_CONFIG_BITRATE_6780 & (id))   /*!< Check if ID indicates 6780kbits/s          */
-#define RFAL_ANALOG_CONFIG_ID_IS_1OF4(id)           (RFAL_ANALOG_CONFIG_BITRATE_1OF4 & (id))   /*!< Check if ID indicates 1 out of 4 bitrate   */
-#define RFAL_ANALOG_CONFIG_ID_IS_1OF256(id)         (RFAL_ANALOG_CONFIG_BITRATE_1OF256 & (id)) /*!< Check if ID indicates 1 out of 256 bitrate */
+#define RFAL_ANALOG_CONFIG_ID_IS_26(id)             (RFAL_ANALOG_CONFIG_BITRATE_26   & (id))   /*!< Check if ID indicates 1 out of 4 bitrate   */
+#define RFAL_ANALOG_CONFIG_ID_IS_1p6(id)            (RFAL_ANALOG_CONFIG_BITRATE_1p6  & (id))   /*!< Check if ID indicates 1 out of 256 bitrate */
 
 #define RFAL_ANALOG_CONFIG_ID_GET_DIRECTION(id)     (RFAL_ANALOG_CONFIG_DIRECTION_MASK & (id)) /*!< Get Direction of Configuration ID          */
 #define RFAL_ANALOG_CONFIG_ID_IS_TX(id)             (RFAL_ANALOG_CONFIG_TX & (id))             /*!< Check if id indicates TX                   */

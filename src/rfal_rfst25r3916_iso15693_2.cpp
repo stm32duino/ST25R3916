@@ -80,9 +80,9 @@
 * GLOBAL FUNCTIONS
 ******************************************************************************
 */
-ReturnCode RfalRfST25R3916Class::iso15693PhyConfigure(const iso15693PhyConfig_t *config, const struct iso15693StreamConfig **needed_stream_config)
+ReturnCode RfalRfST25R3916Class::rfalIso15693PhyConfigure(const rfalIso15693PhyConfig_t *config, const struct rfalIso15693StreamConfig **needed_stream_config)
 {
-  static struct iso15693StreamConfig stream_config = {                                       /* MISRA 8.9 */
+  static struct rfalIso15693StreamConfig stream_config = {                                       /* MISRA 8.9 */
     .useBPSK = 0,              /* 0: subcarrier, 1:BPSK */
     .din = 5,                  /* 2^5*fc = 423750 Hz: divider for the in subcarrier frequency */
     .dout = 7,                 /*!< 2^7*fc = 105937 : divider for the in subcarrier frequency */
@@ -91,7 +91,7 @@ ReturnCode RfalRfST25R3916Class::iso15693PhyConfigure(const iso15693PhyConfig_t 
 
 
   /* make a copy of the configuration */
-  ST_MEMCPY((uint8_t *)&iso15693PhyConfig, (const uint8_t *)config, sizeof(iso15693PhyConfig_t));
+  ST_MEMCPY((uint8_t *)&rfalIso15693PhyConfig, (const uint8_t *)config, sizeof(rfalIso15693PhyConfig_t));
 
   if (config->speedMode <= 3U) {
     /* If valid speed mode adjust report period accordingly */
@@ -106,16 +106,16 @@ ReturnCode RfalRfST25R3916Class::iso15693PhyConfigure(const iso15693PhyConfig_t 
   return ERR_NONE;
 }
 
-ReturnCode RfalRfST25R3916Class::iso15693PhyGetConfiguration(iso15693PhyConfig_t *config)
+ReturnCode RfalRfST25R3916Class::rfalIso15693PhyGetConfiguration(rfalIso15693PhyConfig_t *config)
 {
-  ST_MEMCPY(config, &iso15693PhyConfig, sizeof(iso15693PhyConfig_t));
+  ST_MEMCPY(config, &rfalIso15693PhyConfig, sizeof(rfalIso15693PhyConfig_t));
 
   return ERR_NONE;
 }
 
-ReturnCode RfalRfST25R3916Class::iso15693VCDCode(uint8_t *buffer, uint16_t length, bool sendCrc, bool sendFlags, bool picopassMode,
-                                                 uint16_t *subbit_total_length, uint16_t *offset,
-                                                 uint8_t *outbuf, uint16_t outBufSize, uint16_t *actOutBufSize)
+ReturnCode RfalRfST25R3916Class::rfalIso15693VCDCode(uint8_t *buffer, uint16_t length, bool sendCrc, bool sendFlags, bool picopassMode,
+                                                     uint16_t *subbit_total_length, uint16_t *offset,
+                                                     uint8_t *outbuf, uint16_t outBufSize, uint16_t *actOutBufSize)
 {
   ReturnCode err = ERR_NONE;
   uint8_t eof, sof;
@@ -130,10 +130,10 @@ ReturnCode RfalRfST25R3916Class::iso15693VCDCode(uint8_t *buffer, uint16_t lengt
 
   *actOutBufSize = 0;
 
-  if (ISO15693_VCD_CODING_1_4 == iso15693PhyConfig.coding) {
+  if (ISO15693_VCD_CODING_1_4 == rfalIso15693PhyConfig.coding) {
     sof = ISO15693_DAT_SOF_1_4;
     eof = ISO15693_DAT_EOF_1_4;
-    txFunc = iso15693PhyVCDCode1Of4;
+    txFunc = rfalIso15693PhyVCDCode1Of4;
     *subbit_total_length = (
                              (1U   /* SOF */
                               + ((length + (uint16_t)crc_len) * 4U)
@@ -145,7 +145,7 @@ ReturnCode RfalRfST25R3916Class::iso15693VCDCode(uint8_t *buffer, uint16_t lengt
   } else {
     sof = ISO15693_DAT_SOF_1_256;
     eof = ISO15693_DAT_EOF_1_256;
-    txFunc = iso15693PhyVCDCode1Of256;
+    txFunc = rfalIso15693PhyVCDCode1Of256;
     *subbit_total_length = (
                              (1U   /* SOF */
                               + ((length + (uint16_t)crc_len) * 64U)
@@ -237,14 +237,14 @@ ReturnCode RfalRfST25R3916Class::iso15693VCDCode(uint8_t *buffer, uint16_t lengt
   return err;
 }
 
-ReturnCode RfalRfST25R3916Class::iso15693VICCDecode(const uint8_t *inBuf,
-                                                    uint16_t inBufLen,
-                                                    uint8_t *outBuf,
-                                                    uint16_t outBufLen,
-                                                    uint16_t *outBufPos,
-                                                    uint16_t *bitsBeforeCol,
-                                                    uint16_t ignoreBits,
-                                                    bool picopassMode)
+ReturnCode RfalRfST25R3916Class::rfalIso15693VICCDecode(const uint8_t *inBuf,
+                                                        uint16_t inBufLen,
+                                                        uint8_t *outBuf,
+                                                        uint16_t outBufLen,
+                                                        uint16_t *outBufPos,
+                                                        uint16_t *bitsBeforeCol,
+                                                        uint16_t ignoreBits,
+                                                        bool picopassMode)
 {
   ReturnCode err = ERR_NONE;
   uint16_t crc;
@@ -256,7 +256,7 @@ ReturnCode RfalRfST25R3916Class::iso15693VICCDecode(const uint8_t *inBuf,
 
   /* first check for valid SOF. Since it starts with 3 unmodulated pulses it is 0x17. */
   if ((inBuf[0] & 0x1fU) != 0x17U) {
-    ISO_15693_DEBUG("0x%x\n", iso15693PhyBitBuffer[0]);
+    ISO_15693_DEBUG("0x%x\n", rfalIso15693PhyBitBuffer[0]);
     return ERR_FRAMING;
   }
   ISO_15693_DEBUG("SOF\n");
@@ -367,7 +367,7 @@ ReturnCode RfalRfST25R3916Class::iso15693VICCDecode(const uint8_t *inBuf,
  *
  *****************************************************************************
  */
-ReturnCode iso15693PhyVCDCode1Of4(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen)
+ReturnCode rfalIso15693PhyVCDCode1Of4(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen)
 {
   uint8_t tmp;
   ReturnCode err = ERR_NONE;
@@ -423,7 +423,7 @@ ReturnCode iso15693PhyVCDCode1Of4(const uint8_t data, uint8_t *outbuffer, uint16
  *
  *****************************************************************************
  */
-ReturnCode iso15693PhyVCDCode1Of256(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen)
+ReturnCode rfalIso15693PhyVCDCode1Of256(const uint8_t data, uint8_t *outbuffer, uint16_t maxOutBufLen, uint16_t *outBufLen)
 {
   uint8_t tmp;
   ReturnCode err = ERR_NONE;

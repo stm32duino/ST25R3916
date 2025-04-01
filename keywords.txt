@@ -83,10 +83,10 @@ rfalChipMeasurePhase	KEYWORD2
 rfalChipMeasureCapacitance	KEYWORD2
 rfalChipMeasurePowerSupply	KEYWORD2
 rfalCrcCalculateCcitt	KEYWORD2
-iso15693PhyConfigure	KEYWORD2
-iso15693PhyGetConfiguration	KEYWORD2
-iso15693VCDCode	KEYWORD2
-iso15693VICCDecode	KEYWORD2
+rfalIso15693PhyConfigure	KEYWORD2
+rfalIso15693PhyGetConfiguration	KEYWORD2
+rfalIso15693VCDCode	KEYWORD2
+rfalIso15693VICCDecode	KEYWORD2
 st25r3916Initialize	KEYWORD2
 st25r3916Deinitialize	KEYWORD2
 st25r3916OscOn	KEYWORD2
