@@ -973,7 +973,7 @@ ReturnCode RfalRfST25R3916Class::rfalStartTransceive(const rfalTransceiveContext
 
       /* In AP2P check the field status */
       if (rfalIsModeActiveComm(gRFAL.mode)) {
-        /* Disable our field upon a Rx reEnable, and start PPON2 manually */
+        /* Disable our field upon a Rx re-enable, and start PPON2 manually */
         st25r3916TxOff();
         st25r3916ExecuteCommand(ST25R3916_CMD_START_PPON2_TIMER);
       }
@@ -1131,7 +1131,7 @@ ReturnCode RfalRfST25R3916Class::rfalGetTransceiveRSSI(uint16_t *rssi)
     /*******************************************************************************/
     /* Usage of SQRT from math.h and float. Due to compiler, resources or          *
      * performance issues sqrt is not enabled by default. Using a less accuracy    *
-     * accurate aproach such as: average, max value, etc                           */
+     * accurate approach such as: average, max value, etc                           */
 
 #ifdef RFAL_ACCURATE_RSSI
     *rssi = (uint16_t) sqrt(((double)amRSSI * (double)amRSSI) + ((double)pmRSSI * (double)pmRSSI));             /*  PRQA S 5209 # MISRA 4.9 - External function (sqrt()) requires double */
@@ -1194,7 +1194,7 @@ void RfalRfST25R3916Class::rfalErrorHandling(void)
 
     /*******************************************************************************/
     /* EMD Handling - Digital 2.1  4.1.1.1 ; EMVCo 3.0  4.9.2 ; ISO 14443-3  8.3   */
-    /* ReEnable the receiver on frames with a length < 4 bytes, upon:              */
+    /* Re-enable the receiver on frames with a length < 4 bytes, upon:              */
     /*   - Collision or Framing error detected                                     */
     /*   - Residual bits are detected (hard framing error)                         */
     /*   - Parity error                                                            */
@@ -1215,7 +1215,7 @@ void RfalRfST25R3916Class::rfalErrorHandling(void)
         ((gRFAL.TxRx.status == ERR_RF_COLLISION) || (gRFAL.TxRx.status == ERR_FRAMING) ||
          (gRFAL.TxRx.status == ERR_PAR)          || (gRFAL.TxRx.status == ERR_CRC)     ||
          rxHasIncParError)) {
-      /* Ignore this reception, ReEnable receiver which also clears the FIFO */
+      /* Ignore this reception, Re-enable receiver which also clears the FIFO */
       st25r3916ExecuteCommand(ST25R3916_CMD_UNMASK_RECEIVE_DATA);
 
 
@@ -1402,7 +1402,7 @@ void RfalRfST25R3916Class::rfalPrepareTransceive(void)
     maskInterrupts |= (ST25R3916_IRQ_MASK_EOF | ST25R3916_IRQ_MASK_WU_F);        /* Enable external Field interrupts to detect Link Loss and SENF_REQ auto responses */
   }
 
-  /* In Active comms enable also External Field interrupts and set RF Collsion Avoidance */
+  /* In Active comms enable also External Field interrupts and set RF Collision Avoidance */
   if (rfalIsModeActiveComm(gRFAL.mode)) {
     maskInterrupts |= (ST25R3916_IRQ_MASK_EOF  | ST25R3916_IRQ_MASK_EON  | ST25R3916_IRQ_MASK_PPON2 | ST25R3916_IRQ_MASK_CAT | ST25R3916_IRQ_MASK_CAC);
     /* Set n=0 for subsequent RF Collision Avoidance */
@@ -1808,7 +1808,7 @@ void RfalRfST25R3916Class::rfalTransceiveRx(void)
       }
 
       if ((irqs & ST25R3916_IRQ_MASK_RX_REST) != 0U) {
-        /* RX_REST indicates that Receiver has been reseted due to EMD, therefore a RXS + RXE should *
+        /* RX_REST indicates that Receiver has been reset due to EMD, therefore a RXS + RXE should *
          * follow if a good reception is followed within the valid initial timeout                   */
 
         /* Check whether NRT has expired already, if so signal a timeout */
@@ -2350,7 +2350,7 @@ ReturnCode RfalRfST25R3916Class::rfalISO14443AStartTransceiveAnticollisionFrame(
   }
 
   /*******************************************************************************/
-  /* Set speficic Analog Config for Anticolission if needed */
+  /* Set specific Analog Config for Anticollision if needed */
   rfalSetAnalogConfig((RFAL_ANALOG_CONFIG_POLL | RFAL_ANALOG_CONFIG_TECH_NFCA | RFAL_ANALOG_CONFIG_BITRATE_COMMON | RFAL_ANALOG_CONFIG_ANTICOL));
 
 
@@ -2617,7 +2617,7 @@ ReturnCode RfalRfST25R3916Class::rfalGetFeliCaPollStatus(void)
 
   /* Upon timeout the full Poll Delay + (Slot time)*(nbSlots) has expired */
   if (ret != ERR_TIMEOUT) {
-    /* Reception done, reEnabled Rx for following Slot */
+    /* Reception done, re-enabled Rx for following Slot */
     st25r3916ExecuteCommand(ST25R3916_CMD_UNMASK_RECEIVE_DATA);
     st25r3916ExecuteCommand(ST25R3916_CMD_RESET_RXGAIN);
     rfalFIFOStatusClear();
@@ -3425,7 +3425,7 @@ ReturnCode RfalRfST25R3916Class::rfalListenSetState(rfalLmState newSt)
           st25r3916SetRegisterBits(ST25R3916_REG_OP_CONTROL, (ST25R3916_REG_OP_CONTROL_en | ST25R3916_REG_OP_CONTROL_rx_en));
 
           if (!st25r3916CheckReg(ST25R3916_REG_AUX_DISPLAY, ST25R3916_REG_AUX_DISPLAY_osc_ok, ST25R3916_REG_AUX_DISPLAY_osc_ok)) {
-            /* Wait for Oscilator ready */
+            /* Wait for Oscillator ready */
             if (st25r3916WaitForInterruptsTimed(ST25R3916_IRQ_MASK_OSC, ST25R3916_TOUT_OSC_STABLE) == 0U) {
               ret = ERR_IO;
               break;
@@ -3446,7 +3446,7 @@ ReturnCode RfalRfST25R3916Class::rfalListenSetState(rfalLmState newSt)
          * Ensure that when upper layer calls SetState(IDLE), it restores initial
          * configuration and that check whether an external Field is still present     */
         if ((gRFAL.Lm.mdMask & RFAL_LM_MASK_ACTIVE_P2P) != 0U) {
-          /* Ensure nfc_ar is reseted and back to only after Rx */
+          /* Ensure nfc_ar is reset and back to only after Rx */
           st25r3916ExecuteCommand(ST25R3916_CMD_STOP);
           st25r3916ChangeRegisterBits(ST25R3916_REG_MODE, ST25R3916_REG_MODE_nfc_ar_mask, ST25R3916_REG_MODE_nfc_ar_auto_rx);
 
@@ -3461,14 +3461,14 @@ ReturnCode RfalRfST25R3916Class::rfalListenSetState(rfalLmState newSt)
         }
         /*******************************************************************************/
 
-        /* If we are in ACTIVE_A, reEnable Listen for A before going to IDLE, otherwise do nothing */
+        /* If we are in ACTIVE_A, re-enable Listen for A before going to IDLE, otherwise do nothing */
         if (gRFAL.Lm.state == RFAL_LM_STATE_ACTIVE_A) {
           /* Enable automatic responses for A and Reset NFCA target state */
           st25r3916ClrRegisterBits(ST25R3916_REG_PASSIVE_TARGET, (ST25R3916_REG_PASSIVE_TARGET_d_106_ac_a));
           st25r3916ExecuteCommand(ST25R3916_CMD_GOTO_SENSE);
         }
 
-        /* ReEnable the receiver */
+        /* Re-enable the receiver */
         st25r3916ExecuteCommand(ST25R3916_CMD_CLEAR_FIFO);
         st25r3916ExecuteCommand(ST25R3916_CMD_UNMASK_RECEIVE_DATA);
 
@@ -3496,7 +3496,7 @@ ReturnCode RfalRfST25R3916Class::rfalListenSetState(rfalLmState newSt)
         ret = rfalSetMode(RFAL_MODE_LISTEN_NFCF, gRFAL.Lm.brDetected, gRFAL.Lm.brDetected);
         gRFAL.state = RFAL_STATE_LM;                    /* Keep in Listen Mode */
 
-        /* ReEnable the receiver */
+        /* Re-enable the receiver */
         st25r3916ExecuteCommand(ST25R3916_CMD_CLEAR_FIFO);
         st25r3916ExecuteCommand(ST25R3916_CMD_UNMASK_RECEIVE_DATA);
 
@@ -3894,7 +3894,7 @@ uint16_t RfalRfST25R3916Class::rfalWakeUpModeFilter(uint16_t curRef, uint16_t cu
 
   /* Perform the averaging|filter as describded in ST25R3916 DS */
 
-  /* Avoid signed arithmetics by spliting in two cases */
+  /* Avoid signed arithmetic by splitting in two cases */
   if (curVal > curRef) {
     newRef = curRef + ((curVal - curRef) / weight);
 
@@ -4242,7 +4242,7 @@ ReturnCode RfalRfST25R3916Class::rfalChipMeasureAmplitude(uint8_t *result)
   st25r3916ReadRegister(ST25R3916_REG_AUX_MOD, &reg_auxmod);
 
   /* Set values as per defaults of DS. These regs/bits influence receiver chain and change amplitude */
-  /* Doing so achieves an amplitude comparable over a complete polling cylce */
+  /* Doing so achieves an amplitude comparable over a complete polling cycle */
   st25r3916WriteRegister(ST25R3916_REG_OP_CONTROL, (reg_opc & ~ST25R3916_REG_OP_CONTROL_rx_chn));
   st25r3916WriteRegister(ST25R3916_REG_MODE, (ST25R3916_REG_MODE_om_iso14443a | ST25R3916_REG_MODE_targ_init |
                                               ST25R3916_REG_MODE_tr_am_ook | ST25R3916_REG_MODE_nfc_ar_off));

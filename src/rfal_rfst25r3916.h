@@ -163,7 +163,7 @@ typedef struct {
 
 /*! Struct that holds counters to control the FIFO on Tx and Rx                                                                          */
 typedef struct {
-  uint16_t                expWL;       /*!< The amount of bytes expected to be Tx when a WL interrupt occours                          */
+  uint16_t                expWL;       /*!< The amount of bytes expected to be Tx when a WL interrupt occurs                          */
   uint16_t                bytesTotal;  /*!< Total bytes to be transmitted OR the total bytes received                                  */
   uint16_t                bytesWritten;/*!< Amount of bytes already written on FIFO (Tx) OR read (RX) from FIFO and written on rxBuffer*/
   uint8_t                 status[ST25R3916_FIFO_STATUS_LEN];   /*!< FIFO Status Registers                                              */
@@ -374,7 +374,7 @@ typedef void (*ST25R3916IrqHandler)(void);
 #endif /* RFAL_ST25R3916_AAT_SETTLE */
 
 #ifndef RFAL_ST25R3916B_AAT_SETTLE
-  #define RFAL_ST25R3916B_AAT_SETTLE  ST25R3916_REG_MEAS_TX_DELAY_meas_tx_del_4_83ms/*!< Time between Oscilator stable and TX On in meas_tx_del steps                    */
+  #define RFAL_ST25R3916B_AAT_SETTLE  ST25R3916_REG_MEAS_TX_DELAY_meas_tx_del_4_83ms/*!< Time between Oscillator stable and TX On in meas_tx_del steps                    */
 #endif /* RFAL_ST25R3916B_AAT_SETTLE */
 
 
@@ -429,7 +429,7 @@ typedef void (*ST25R3916IrqHandler)(void);
  * ISO15693 2000  8.4  t1 MIN = 4192/fc
  * ISO15693 2009  9.1  t1 MIN = 4320/fc
  * Digital 2.1 B.5 FDTV,LISTEN,MIN  = 4310/fc
- * Set FDT Listen one step earlier than on the more recent spec versions for greater interoprability
+ * Set FDT Listen one step earlier than on the more recent spec versions for greater interoperability
  */
 #define RFAL_FDT_LISTEN_V_ADJUSTMENT    64U
 
