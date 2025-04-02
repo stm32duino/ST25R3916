@@ -90,7 +90,11 @@
 #define ST25R3916_IRQ_MASK_WT              (uint32_t)(0x00080000U)   /*!< ST25R3916 wake-up interrupt                                 */
 #define ST25R3916_IRQ_MASK_WAM             (uint32_t)(0x00040000U)   /*!< ST25R3916 wake-up due to amplitude interrupt                */
 #define ST25R3916_IRQ_MASK_WPH             (uint32_t)(0x00020000U)   /*!< ST25R3916 wake-up due to phase interrupt                    */
-#define ST25R3916_IRQ_MASK_WCAP            (uint32_t)(0x00010000U)   /*!< ST25R3916 wake-up due to capacitance measurement            */
+#if defined(ST25R3916)
+  #define ST25R3916_IRQ_MASK_WCAP            (uint32_t)(0x00010000U)   /*!< ST25R3916 wake-up due to capacitance measurement            */
+#elif defined(ST25R3916B)
+  #define ST25R3916_IRQ_MASK_WCAP            ST25R3916_IRQ_MASK_NONE   /*!< ST25R3916B disable capacitive WU                            */
+#endif /* ST25R3916 */
 
 /* Passive Target Interrupt Register */
 #define ST25R3916_IRQ_MASK_PPON2           (uint32_t)(0x80000000U)   /*!< ST25R3916 PPON2 Field on waiting Timer interrupt            */

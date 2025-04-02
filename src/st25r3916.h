@@ -23,11 +23,11 @@
  *
  *  \author SRA
  *
- *  \brief ST25R3911 declaration file
+ *  \brief ST25R3916 declaration file
  *
  * API:
- * - Initialize ST25R3911 driver: #st25r3911Initialize
- * - Deinitialize ST25R3911 driver: #st25r3911Deinitialize
+ * - Initialize ST25R3916 driver: #ST25R3916Initialize
+ * - Deinitialize ST25R3916 driver: #ST25R3916Deinitialize
  *
  *
  * \addtogroup RFAL
@@ -37,19 +37,18 @@
  * \brief RFAL Hardware Abstraction Layer
  * @{
  *
- * \addtogroup ST25R3911
- * \brief RFAL ST25R3911 Driver
+ * \addtogroup ST25R3916
+ * \brief RFAL ST25R3916 Driver
  * @{
  *
- * \addtogroup ST25R3911_Driver
- * \brief RFAL ST25R3911 Driver
+ * \addtogroup ST25R3916_Driver
+ * \brief RFAL ST25R3916 Driver
  * @{
  *
  */
 
-#ifndef ST25R3911_H
-#define ST25R3911_H
-
+#ifndef ST25R3916_H
+#define ST25R3916_H
 /*
 ******************************************************************************
 * INCLUDES
@@ -95,8 +94,8 @@ struct st25r3916StreamConfig {
 #define ST25R3916_CMD_RESPONSE_RF_COLLISION_N  0xC9U    /*!< NFC transmit with Response RF Collision Avoidance       */
 #define ST25R3916_CMD_GOTO_SENSE               0xCDU    /*!< Passive target logic to Sense/Idle state                */
 #define ST25R3916_CMD_GOTO_SLEEP               0xCEU    /*!< Passive target logic to Sleep/Halt state                */
-#define ST25R3916_CMD_MASK_RECEIVE_DATA        0xD0U    /*!< Mask receive data                                        */
-#define ST25R3916_CMD_UNMASK_RECEIVE_DATA      0xD1U    /*!< Unmask receive data                                      */
+#define ST25R3916_CMD_MASK_RECEIVE_DATA        0xD0U    /*!< Mask receive data                                       */
+#define ST25R3916_CMD_UNMASK_RECEIVE_DATA      0xD1U    /*!< Unmask receive data                                     */
 #define ST25R3916_CMD_AM_MOD_STATE_CHANGE      0xD2U    /*!< AM Modulation state change                              */
 #define ST25R3916_CMD_MEASURE_AMPLITUDE        0xD3U    /*!< Measure signal amplitude on RFI inputs                  */
 #define ST25R3916_CMD_RESET_RXGAIN             0xD5U    /*!< Reset RX Gain                                           */
@@ -106,8 +105,10 @@ struct st25r3916StreamConfig {
 #define ST25R3916_CMD_CLEAR_RSSI               0xDAU    /*!< Clear RSSI bits and restart the measurement             */
 #define ST25R3916_CMD_CLEAR_FIFO               0xDBU    /*!< Clears FIFO, Collision and IRQ status                   */
 #define ST25R3916_CMD_TRANSPARENT_MODE         0xDCU    /*!< Transparent mode                                        */
-#define ST25R3916_CMD_CALIBRATE_C_SENSOR       0xDDU    /*!< Calibrate the capacitive sensor                         */
-#define ST25R3916_CMD_MEASURE_CAPACITANCE      0xDEU    /*!< Measure capacitance                                     */
+#ifdef ST25R3916
+  #define ST25R3916_CMD_CALIBRATE_C_SENSOR       0xDDU    /*!< Calibrate the capacitive sensor                         */
+  #define ST25R3916_CMD_MEASURE_CAPACITANCE      0xDEU    /*!< Measure capacitance                                     */
+#endif /* ST25R3916 */
 #define ST25R3916_CMD_MEASURE_VDD              0xDFU    /*!< Measure power supply voltage                            */
 #define ST25R3916_CMD_START_GP_TIMER           0xE0U    /*!< Start the general purpose timer                         */
 #define ST25R3916_CMD_START_WUP_TIMER          0xE1U    /*!< Start the wake-up timer                                 */
@@ -115,6 +116,9 @@ struct st25r3916StreamConfig {
 #define ST25R3916_CMD_START_NO_RESPONSE_TIMER  0xE3U    /*!< Start the no-response timer                             */
 #define ST25R3916_CMD_START_PPON2_TIMER        0xE4U    /*!< Start PPon2 timer                                       */
 #define ST25R3916_CMD_STOP_NRT                 0xE8U    /*!< Stop No Response Timer                                  */
+#ifdef ST25R3916B
+  #define ST25R3916_CMD_RC_CAL                   0xEAU    /*!< Trigger RC calibration                                  */
+#endif /* ST25R3916B */
 #define ST25R3916_CMD_SPACE_B_ACCESS           0xFBU    /*!< Enable R/W access to the test registers                 */
 #define ST25R3916_CMD_TEST_ACCESS              0xFCU    /*!< Enable R/W access to the test registers                 */
 
@@ -131,6 +135,8 @@ struct st25r3916StreamConfig {
 #define ST25R3916_BR_6780                      0x07U    /*!< ST25R3916 Bit Rate 6780 kbit/s (fc/2)                   */
 
 #define ST25R3916_FIFO_DEPTH                   512U     /*!< Depth of FIFO                                           */
+#define ST25R3916_TOUT_OSC_STABLE              10U      /*!< Max timeout for Oscillator to get stable      DS: 700us */
+
 
 /*
 ******************************************************************************
@@ -165,6 +171,9 @@ struct st25r3916StreamConfig {
 /*! Checks if the Oscillator is enabled  */
 #define st25r3916IsOscOn()            st25r3916CheckReg( ST25R3916_REG_OP_CONTROL, ST25R3916_REG_OP_CONTROL_en, ST25R3916_REG_OP_CONTROL_en )
 
+/*! Checks if the AAT is enabled  */
+#define st25r3916IsAATOn()            st25r3916CheckReg( ST25R3916_REG_IO_CONF2, ST25R3916_REG_IO_CONF2_aat_en, ST25R3916_REG_IO_CONF2_aat_en )
+
 /*
 ******************************************************************************
 * GLOBAL FUNCTION PROTOTYPES
@@ -172,7 +181,7 @@ struct st25r3916StreamConfig {
 */
 
 
-#endif /* ST25R3911_H */
+#endif /* ST25R3916_H */
 
 /**
   * @}
