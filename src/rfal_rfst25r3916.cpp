@@ -71,8 +71,10 @@ ReturnCode RfalRfST25R3916Class::rfalInitialize(void)
 {
   ReturnCode err;
 
-  pinMode(cs_pin, OUTPUT);
-  digitalWrite(cs_pin, HIGH);
+  if (i2c_enabled == false) {
+    pinMode(cs_pin, OUTPUT);
+    digitalWrite(cs_pin, HIGH);
+  }
 
   pinMode(int_pin, INPUT);
   Callback<void()>::func = std::bind(&RfalRfST25R3916Class::st25r3916Isr, this);
