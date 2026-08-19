@@ -55,6 +55,12 @@
   #ifndef ST25R3916_ISR_MAX_REG_READS
     #define ST25R3916_ISR_MAX_REG_READS     8U
   #endif
+
+  /*! Interval at which st25r3916WaitForInterruptsTimed() polls the IRQ registers
+  *  instead of trusting a pin edge to have filled in the interrupt status. */
+  #ifndef ST25R3916_IRQ_POLL_INTERVAL_US
+    #define ST25R3916_IRQ_POLL_INTERVAL_US  200U
+  #endif
 #endif /* ST25R3916_SHARED_IRQ_LINE */
 
 /*
@@ -184,10 +190,36 @@ uint32_t RfalRfST25R3916Class::st25r3916WaitForInterruptsTimed(uint32_t mask, ui
 
   tmrDelay = timerCalculateTimer(tmo);
 
+#ifdef ST25R3916_SHARED_IRQ_LINE
+  /* Poll this IC's IRQ registers while waiting, rather than only spinning on
+   * st25r3916interrupt.status.
+   *
+   * The default path below assumes a pin-edge ISR is filling in .status
+   * concurrently.  On a shared IRQ line that edge is not dependable (see
+   * st25r3916CheckForReceivedInterrupts()), so .status can stay empty and the
+   * loop always runs to its timeout -- which is every transceive.  Calling
+   * st25r3916Isr() on an interval fetches this IC's own registers over SPI, so
+   * progress no longer depends on the pin.
+   *
+   * Timing uses micros() rather than the RFAL timer, since timerIsExpired() is
+   * the coarse ms timer being used for the outer bound.  The unsigned delta is
+   * wraparound-safe at this interval. */
+  uint32_t last_us = micros();
+
+  do {
+    uint32_t now_us = micros();
+    if ((now_us - last_us) >= ST25R3916_IRQ_POLL_INTERVAL_US) {
+      st25r3916Isr();
+      last_us = now_us;
+    }
+    status = (st25r3916interrupt.status & mask);
+  } while ((!timerIsExpired(tmrDelay) || (tmo == 0U)) && (status == 0U));
+#else
   /* Run until specific interrupt has happen or the timer has expired */
   do {
     status = (st25r3916interrupt.status & mask);
   } while ((!timerIsExpired(tmrDelay) || (tmo == 0U)) && (status == 0U));
+#endif /* ST25R3916_SHARED_IRQ_LINE */
 
   status = st25r3916interrupt.status & mask;
 
