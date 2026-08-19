@@ -198,8 +198,8 @@ uint32_t RfalRfST25R3916Class::st25r3916WaitForInterruptsTimed(uint32_t mask, ui
    * concurrently.  On a shared IRQ line that edge is not dependable (see
    * st25r3916CheckForReceivedInterrupts()), so .status can stay empty and the
    * loop always runs to its timeout -- which is every transceive.  Calling
-   * st25r3916Isr() on an interval fetches this IC's own registers over SPI, so
-   * progress no longer depends on the pin.
+   * st25r3916CheckForReceivedInterrupts() on an interval fetches this IC's
+   * own registers over SPI, so progress no longer depends on the pin.
    *
    * Timing uses micros() rather than the RFAL timer, since timerIsExpired() is
    * the coarse ms timer being used for the outer bound.  The unsigned delta is
@@ -209,7 +209,7 @@ uint32_t RfalRfST25R3916Class::st25r3916WaitForInterruptsTimed(uint32_t mask, ui
   do {
     uint32_t now_us = micros();
     if ((now_us - last_us) >= ST25R3916_IRQ_POLL_INTERVAL_US) {
-      st25r3916Isr();
+      st25r3916CheckForReceivedInterrupts();
       last_us = now_us;
     }
     status = (st25r3916interrupt.status & mask);
